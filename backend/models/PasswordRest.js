@@ -1,8 +1,7 @@
-
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
-const OTP = sequelize.define('OTP', {
+const PasswordReset = sequelize.define('PasswordReset', {
     id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
@@ -12,13 +11,10 @@ const OTP = sequelize.define('OTP', {
         type: DataTypes.UUID,
         allowNull: false
     },
-    otp_code: {
+    token: {
         type: DataTypes.STRING,
-        allowNull: false
-    },
-    type: {
-        type: DataTypes.ENUM('email_verification', 'password_reset', 'login'),
-        allowNull: false
+        allowNull: false,
+        unique: true
     },
     expires_at: {
         type: DataTypes.DATE,
@@ -27,21 +23,17 @@ const OTP = sequelize.define('OTP', {
     is_used: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
-    },
-    attempts: {
-        type: DataTypes.INTEGER,
-        defaultValue: 0
     }
 }, {
     timestamps: true,
     indexes: [
         {
-            fields: ['user_id', 'type', 'is_used']
+            fields: ['token']
         },
         {
-            fields: ['expires_at']
+            fields: ['user_id', 'is_used']
         }
     ]
 });
 
-module.exports = OTP;
+module.exports = PasswordReset;

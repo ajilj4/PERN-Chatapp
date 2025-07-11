@@ -15,7 +15,8 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING
     },
     name: {
-        type: DataTypes.STRING
+        type: DataTypes.STRING,
+        allowNull:true
     },
 
     email: {
@@ -26,9 +27,17 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING,
         unique: true
     },
+    profile: {
+        type: DataTypes.STRING,
+        defaultValue: null
+    },
     role: {
         type: DataTypes.STRING,
         defaultValue: 'user'
+    },
+    qrCode:{
+        type: DataTypes.STRING,
+        defaultValue: null,
     },
     last_seen: {
         type: DataTypes.DATE,
@@ -45,9 +54,9 @@ const User = sequelize.define('User', {
     is_verified: {
         type: DataTypes.BOOLEAN
     }
-},{
-    timestamps:true,
-    paranoid:true
+}, {
+    timestamps: true,
+    paranoid: true
 })
 
 module.exports = User
