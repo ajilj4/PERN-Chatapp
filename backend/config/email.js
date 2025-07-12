@@ -1,72 +1,74 @@
-
-const axios = require('axios');
+const { Resend } = require('resend');
 
 class EmailService {
   constructor() {
-    this.serviceId = process.env.EMAILJS_SERVICE_ID;
-    this.templateId = process.env.EMAILJS_UNIVERSAL_TEMPLATE_ID;
-    this.publicKey = process.env.EMAILJS_PUBLIC_KEY;
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('Missing RESEND_API_KEY');
+    }
+    this.resend = new Resend(process.env.RESEND_API_KEY);
+    this.fromAddress = `"Chat" <onboarding@resend.dev>`; // adjust as needed
   }
 
-  async sendEmail(templateParams) {
+
+  async sendEmail(to, subject, html) {
     try {
-      const payload = {
-        service_id: this.serviceId,
-        template_id: this.templateId,
-        user_id: this.publicKey,
-        template_params: templateParams,
-      };
-
-      const response = await axios.post('https://api.emailjs.com/api/v1.0/email/send', payload, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const result = await this.resend.emails.send({
+        from: this.fromAddress,
+        to,
+        subject,
+        html,
       });
-
-      return response.data;
-    } catch (error) {
-      console.error('EmailJS Axios send failed:', error.response?.data || error.message);
+      console.log('✅ Resend response:', result);
+      return result;
+    } catch (err) {
+      console.error('❌ Resend send failed:', err);
       throw new Error('Failed to send email');
     }
   }
 
-  async sendWelcomeEmail(email, name, message) {
-    return await this.sendEmail({
-      name,
-      email,
-      title: 'Welcome to AjilChat 🎉',
-      message,
-      optional_link: '',
-      company_name: 'AjilChat',
-    });
+  async sendWelcomeEmail(email, name) {
+    const message = `
+  Welcome aboard, ${name}!  
+  At ThisChat you can:<br>
+  • Start private or group conversations  <br>
+  • Share photos, videos, and voice notes  <br>
+  • Customize your profile and status  <br>
+  • Explore topic-based chat rooms  <br><br>
+
+  If you ever need help, just reply to this email or visit our Help Center. Happy chatting!
+`;
+    const subject = 'Welcome to AjilChat 🎉';
+    const html = `
+      <h1>Hello ${name},</h1>
+      <p>${message}</p>
+      <p>— The AjilChat Team</p>
+    `;
+    return this.sendEmail(email, subject, html);
   }
 
   async sendOTPEmail(email, name, otp) {
-    return await this.sendEmail({
-      name,
-      email,
-      title: 'Your OTP Code',
-      message: `Your OTP is <strong>${otp}</strong>. Do not share it with anyone.`,
-      optional_link: '',
-      company_name: 'AjilChat',
-    });
+    console.log(email, name, otp)
+    const subject = 'Your OTP Code';
+    const html = `
+      <h1>Hi ${name},</h1>
+      <p>Your OTP is <strong>${otp}</strong>. Do not share it with anyone.</p>
+      <p>This code will expire in 10 minutes.</p>
+      <p>— The AjilChat Team</p>
+    `;
+    return this.sendEmail(email, subject, html);
   }
 
   async sendPasswordResetEmail(email, name, token) {
+    const subject = 'Reset Your Password';
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    const optional_link = `
-      <div class="optional-link">
-        <a href="${resetLink}">Reset Password</a>
-      </div>`;
-
-    return await this.sendEmail({
-      name,
-      email,
-      title: 'Reset Your Password',
-      message: `We received a request to reset your password. If you didn’t request this, you can ignore this email.`,
-      optional_link,
-      company_name: 'AjilChat',
-    });
+    const html = `
+      <h1>Hi ${name},</h1>
+      <p>We received a request to reset your password. Click the link below to proceed:</p>
+      <p><a href="${resetLink}">Reset Password</a></p>
+      <p>If you didn’t request this, you can safely ignore this email.</p>
+      <p>— The AjilChat Team</p>
+    `;
+    return this.sendEmail(email, subject, html);
   }
 }
 

@@ -74,6 +74,7 @@ const userLogin = async (req, res) => {
 
 const verifyOTP = async (req, res) => {
     try {
+        console.log('sss',req.body)
         const { error } = verifyOTPSchema.validate(req.body);
         if (error) {
             return res.status(400).json({

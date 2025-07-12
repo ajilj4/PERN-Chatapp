@@ -60,7 +60,7 @@ const register = async ({ email, name, password, phone, username, profile }) => 
 
     // Send verification email
     try {
-        await emailService.sendOTPEmail(email, otp, name);
+        await emailService.sendOTPEmail(email,username, otp );
     } catch (emailError) {
         console.error('Failed to send verification email:', emailError);
         // Don't throw error here, user is still created
@@ -131,6 +131,7 @@ const login = async ({ email, password, deviceInfo, ip }) => {
 };
 
 const verifyOTP = async ({ email, otp, type }) => {
+    console.log( email, otp, type)
     const user = await User.findOne({ where: { email } });
     if (!user) {
         throw new Error('User not found');
@@ -159,7 +160,7 @@ const verifyOTP = async ({ email, otp, type }) => {
         
         // Send welcome email
         try {
-            await emailService.sendWelcomeEmail(user.email, user.name);
+            await emailService.sendWelcomeEmail(user.email, user.username);
         } catch (emailError) {
             console.error('Failed to send welcome email:', emailError);
         }
