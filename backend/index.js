@@ -5,35 +5,40 @@ const http = require('http')
 const multer = require('multer')
 require('./config/redis')
 require('./config/bullmq');
-
+const initSocket = require('./config/socket');
 const sequelize = require('./config/db')
 
 const app = express()
-app.use(cors())
+
+app.use(cors({
+    origin:'*'
+}))
 app.use(express.json())
-app.use(express.urlencoded({extended:true}))
+app.use(express.urlencoded({ extended: true }))
 
 const upload = multer()
-
 const routes = require('./routes')
-app.use('/api',routes)
+const model = require('./models')
+
+app.use('/api', routes)
 app.get('/', (req, res) => res.send('✅ API is working!'));
 
+// Create HTTP server and attach Socket.IO
 const server = http.createServer(app)
+const io = initSocket(server); // Pass the HTTP server to initSocket
 
 const PORT = process.env.PORT || 4000;
 
 (async () => {
     try {
         await sequelize.authenticate()
-        await sequelize.sync({alter:true})
-      
+        await sequelize.sync({ alter: true })
         
-        server.listen(PORT,()=>{
-            console.log('server connected')
+        server.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`)
+            console.log(`Socket.IO server initialized`)
         })
     } catch (err) {
         console.log(err)
     }
-
 })()
