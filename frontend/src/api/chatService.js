@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient';
 
-const BASE = '/v1/chat';
+const BASE = '/chat';
 
 export default {
   createRoom(data) {
@@ -52,7 +52,7 @@ export default {
   },
   
   searchUsers(query) {
-    return axiosClient.get(`${BASE}/search/users`, { params: { query } });
+    return axiosClient.get(`${BASE}/search/users`, { params: { q: query } });
   },
   
   getContacts() {

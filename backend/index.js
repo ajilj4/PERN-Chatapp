@@ -8,6 +8,9 @@ require('./config/bullmq');
 const initSocket = require('./config/socket');
 const sequelize = require('./config/db')
 
+
+const db = require('./models/index')
+
 const app = express()
 
 app.use(cors({

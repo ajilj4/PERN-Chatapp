@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchContacts, fetchRooms, createRoom } from '../../features/chat/chatThunks';
+import { fetchRooms, createRoom, searchUsers, fetchContacts } from '../../features/chat/chatThunks';
 import { setCurrentRoom } from '../../features/chat/chatSlice';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import Modal from '../ui/Modal';
+import { ComponentErrorBoundary } from '../ui/ErrorBoundary';
+import { formatTimeAgo } from '../../utils/timeUtils';
 
 export default function ContactList({ onSelect }) {
   const dispatch = useDispatch();
-  const { contacts, rooms } = useSelector(state => state.chat);
+  const { rooms, loading, searchResults, contacts, searchLoading } = useSelector(state => state.chat);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupForm, setGroupForm] = useState({
@@ -16,32 +18,53 @@ export default function ContactList({ onSelect }) {
     description: '',
     members: []
   });
+  const [groupMemberSearch, setGroupMemberSearch] = useState('');
 
   useEffect(() => {
-    dispatch(fetchContacts());
     dispatch(fetchRooms());
+    dispatch(fetchContacts());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      const debounceTimer = setTimeout(() => {
+        dispatch(searchUsers(searchTerm));
+      }, 300);
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [searchTerm, dispatch]);
+
+  useEffect(() => {
+    if (groupMemberSearch.trim()) {
+      const debounceTimer = setTimeout(() => {
+        dispatch(searchUsers(groupMemberSearch));
+      }, 300);
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [groupMemberSearch, dispatch]);
 
   const handleContactSelect = (contact) => {
     // Check if private room already exists
-    const existingRoom = rooms.find(room => 
-      room.type === 'private' && 
-      room.members.some(member => member.user.id === contact.id)
+    const existingRoom = rooms.find(room =>
+      room.type === 'private' &&
+      room.members?.some(member => member.user?.id === contact.id)
     );
-    
+
     if (existingRoom) {
       dispatch(setCurrentRoom(existingRoom));
-      onSelect();
+      onSelect?.();
       return;
     }
-    
+
     // Create new private room
     dispatch(createRoom({
       type: 'private',
       members: [contact.id]
-    })).then((room) => {
-      dispatch(setCurrentRoom(room));
-      onSelect();
+    })).then((result) => {
+      if (result.payload?.data) {
+        dispatch(setCurrentRoom(result.payload.data));
+        onSelect?.();
+      }
     });
   };
 
@@ -55,6 +78,7 @@ export default function ContactList({ onSelect }) {
       dispatch(setCurrentRoom(room));
       setShowCreateGroup(false);
       setGroupForm({ name: '', description: '', members: [] });
+      setGroupMemberSearch('');
       onSelect();
     });
   };
@@ -68,13 +92,34 @@ export default function ContactList({ onSelect }) {
     }));
   };
 
-  const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Get available users for group creation (contacts + search results)
+  const getAvailableUsers = () => {
+    const contactsArray = contacts || [];
+    const searchArray = searchResults || [];
+
+    // If there's a search term, prioritize search results, otherwise use contacts
+    if (groupMemberSearch.trim()) {
+      // Combine and deduplicate users from both sources
+      const allUsers = [...contactsArray, ...searchArray];
+      const uniqueUsers = allUsers.filter((user, index, self) =>
+        index === self.findIndex(u => u.id === user.id)
+      );
+
+      // Filter by search term
+      return uniqueUsers.filter(user =>
+        user.name?.toLowerCase().includes(groupMemberSearch.toLowerCase()) ||
+        user.username?.toLowerCase().includes(groupMemberSearch.toLowerCase())
+      );
+    }
+
+    return contactsArray;
+  };
+
+
 
   return (
-    <div className="h-full flex flex-col border-r">
+    <ComponentErrorBoundary componentName="ContactList">
+      <div className="h-full flex flex-col border-r">
       <div className="p-4 border-b">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Chats</h2>
@@ -97,82 +142,124 @@ export default function ContactList({ onSelect }) {
       </div>
 
       <div className="overflow-y-auto flex-1">
-        {/* Recent Conversations */}
+        {/* Chat Rooms */}
         <div className="p-2">
-          <h3 className="text-sm font-semibold text-gray-500 px-2 mb-1">Recent</h3>
-          {rooms.map(room => (
-            <div 
-              key={room.id}
-              className="flex items-center p-3 hover:bg-gray-100 rounded-lg cursor-pointer"
-              onClick={() => {
-                dispatch(setCurrentRoom(room));
-                onSelect();
-              }}
-            >
-              {room.type === 'private' ? (
-                <>
-                  <Avatar 
-                    src={room.members[0].user.profile} 
-                    status={room.members[0].user.is_online ? 'online' : 'offline'}
-                  />
-                  <div className="ml-3">
-                    <div className="font-medium">{room.members[0].user.name}</div>
-                    <p className="text-sm text-gray-500 truncate max-w-xs">
-                      {room.lastMessage?.content || 'Start a conversation'}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="relative">
-                    <div className="bg-gray-200 border-2 border-dashed rounded-xl w-12 h-12" />
-                    <span className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </span>
-                  </div>
-                  <div className="ml-3">
-                    <div className="font-medium">{room.name}</div>
-                    <p className="text-sm text-gray-500 truncate max-w-xs">
-                      {room.lastMessage?.content || 'Group created'}
-                    </p>
-                  </div>
-                </>
-              )}
-              {room.unreadCount > 0 && (
-                <Badge count={room.unreadCount} className="ml-auto" />
-              )}
+          <h3 className="text-sm font-semibold text-gray-500 px-2 mb-1">Chats</h3>
+          {loading ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
             </div>
-          ))}
+          ) : (rooms || []).length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No chats yet</p>
+              <p className="text-xs">Search for users to start chatting</p>
+            </div>
+          ) : (
+            (rooms || []).map(room => {
+              const otherMember = room.members?.find(member => member.user?.id !== room.currentUserId);
+              const displayName = room.type === 'private'
+                ? otherMember?.user?.name || 'Unknown User'
+                : room.name;
+              const displayAvatar = room.type === 'private'
+                ? otherMember?.user?.profile
+                : null;
+              const isOnline = room.type === 'private'
+                ? otherMember?.user?.is_active
+                : false;
+
+              return (
+                <div
+                  key={room.id}
+                  className="flex items-center p-3 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                  onClick={() => {
+                    dispatch(setCurrentRoom(room));
+                    onSelect?.();
+                  }}
+                >
+                  {room.type === 'private' ? (
+                    <Avatar
+                      src={displayAvatar}
+                      status={isOnline ? 'online' : 'offline'}
+                      name={displayName}
+                    />
+                  ) : (
+                    <div className="relative">
+                      <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-full w-12 h-12 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                        </svg>
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 bg-green-500 rounded-full w-4 h-4 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">{room.members?.length || 0}</span>
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="ml-3 flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-gray-900 truncate">{displayName}</div>
+                      {room.last_activity && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          {formatTimeAgo(room.last_activity)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 truncate">
+                      {room.lastMessage?.content || (room.type === 'group' ? 'Group created' : 'Start a conversation')}
+                    </p>
+                  </div>
+
+                  {room.unreadCount > 0 && (
+                    <Badge count={room.unreadCount} className="ml-2" />
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
-        {/* Contacts */}
-        <div className="p-2 border-t">
-          <h3 className="text-sm font-semibold text-gray-500 px-2 mb-1">Contacts</h3>
-          {filteredContacts.map(contact => (
-            <div 
-              key={contact.id}
-              className="flex items-center p-3 hover:bg-gray-100 rounded-lg cursor-pointer"
-              onClick={() => handleContactSelect(contact)}
-            >
-              <Avatar 
-                src={contact.profile} 
-                status={contact.is_online ? 'online' : 'offline'}
-              />
-              <div className="ml-3">
-                <div className="font-medium">{contact.name}</div>
-                <p className="text-sm text-gray-500">@{contact.username}</p>
+        {/* Search Results */}
+        {searchTerm && (
+          <div className="p-2 border-t">
+            <h3 className="text-sm font-semibold text-gray-500 px-2 mb-1">Search Results</h3>
+            {searchLoading ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
               </div>
-            </div>
-          ))}
-        </div>
+            ) : (searchResults || []).length === 0 ? (
+              <div className="text-center py-4 text-gray-500">
+                <p className="text-sm">No users found</p>
+              </div>
+            ) : (
+              (searchResults || []).map(user => (
+                <div
+                  key={user.id}
+                  className="flex items-center p-3 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                  onClick={() => handleContactSelect(user)}
+                >
+                  <Avatar
+                    src={user.profile}
+                    status={user.is_active ? 'online' : 'offline'}
+                    name={user.name}
+                  />
+                  <div className="ml-3">
+                    <div className="font-medium text-gray-900">{user.name}</div>
+                    <p className="text-sm text-gray-500">@{user.username}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Create Group Modal */}
-      <Modal 
+      <Modal
         isOpen={showCreateGroup}
-        onClose={() => setShowCreateGroup(false)}
+        onClose={() => {
+          setShowCreateGroup(false);
+          setGroupMemberSearch('');
+        }}
         title="Create New Group"
       >
         <div className="space-y-4">
@@ -197,16 +284,40 @@ export default function ContactList({ onSelect }) {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Add Members</label>
+            <input
+              type="text"
+              placeholder="Search users..."
+              className="w-full px-3 py-2 border rounded-lg mb-2"
+              value={groupMemberSearch}
+              onChange={(e) => setGroupMemberSearch(e.target.value)}
+            />
             <div className="border rounded-lg max-h-40 overflow-y-auto p-2">
-              {contacts.map(contact => (
-                <div 
-                  key={contact.id}
-                  className={`flex items-center p-2 rounded cursor-pointer ${groupForm.members.includes(contact.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-                  onClick={() => toggleMemberSelection(contact.id)}
+              {groupMemberSearch.trim() && searchLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                </div>
+              ) : getAvailableUsers().length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  <p className="text-sm">
+                    {groupMemberSearch.trim() ? 'No users found' : 'No contacts available'}
+                  </p>
+                  <p className="text-xs">
+                    {groupMemberSearch.trim()
+                      ? 'Try a different search term'
+                      : 'Start chatting with users to add them to groups'
+                    }
+                  </p>
+                </div>
+              ) : (
+                getAvailableUsers().map(user => (
+                <div
+                  key={user.id}
+                  className={`flex items-center p-2 rounded cursor-pointer ${groupForm.members.includes(user.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                  onClick={() => toggleMemberSelection(user.id)}
                 >
-                  <Avatar src={contact.profile} />
-                  <span className="ml-2">{contact.name}</span>
-                  {groupForm.members.includes(contact.id) && (
+                  <Avatar src={user.profile} />
+                  <span className="ml-2">{user.name}</span>
+                  {groupForm.members.includes(user.id) && (
                     <span className="ml-auto text-green-500">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -214,14 +325,18 @@ export default function ContactList({ onSelect }) {
                     </span>
                   )}
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <button
               className="px-4 py-2 border rounded-lg text-gray-700"
-              onClick={() => setShowCreateGroup(false)}
+              onClick={() => {
+                setShowCreateGroup(false);
+                setGroupMemberSearch('');
+              }}
             >
               Cancel
             </button>
@@ -235,6 +350,7 @@ export default function ContactList({ onSelect }) {
           </div>
         </div>
       </Modal>
-    </div>
+      </div>
+    </ComponentErrorBoundary>
   );
 }

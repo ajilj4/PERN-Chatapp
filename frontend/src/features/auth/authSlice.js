@@ -16,7 +16,10 @@ const initialState = {
   users: [],
   status: 'idle',
   error: null,
-  message: null
+  message: null,
+  permissions: [],
+  role: null,
+  isAuthenticated: false
 };
 
 const authSlice = createSlice({
@@ -46,6 +49,9 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (s,a) => {
         s.user  = a.payload.data.user;
         s.token = a.payload.data.accessToken;
+        s.role = a.payload.data.user.role;
+        s.permissions = a.payload.data.user.permissions || [];
+        s.isAuthenticated = true;
         localStorage.setItem('accessToken', s.token);
       })
       .addCase(loginUser.rejected, (s,a) => {
@@ -64,6 +70,9 @@ const authSlice = createSlice({
       .addCase(logoutUser.fulfilled, (s) => {
         s.user = null;
         s.token = null;
+        s.role = null;
+        s.permissions = [];
+        s.isAuthenticated = false;
         localStorage.removeItem('accessToken');
       })
 

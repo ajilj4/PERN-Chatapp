@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient';
 
-const BASE = '/v1/auth';
+const BASE = '/auth';
 
 export default {
   register(formData) {
@@ -30,10 +30,18 @@ export default {
   logout(payload) {
     return axiosClient.post(`${BASE}/logout`, payload);
   },
-  getAllUsers() {
-    return axiosClient.get(`${BASE}/all-users`);
+  // Get current user profile
+  getCurrentUser() {
+    return axiosClient.get(`${BASE}/me`);
   },
-  getUser(id) {
-    return axiosClient.get(`${BASE}/user/${id}`);
+
+  // Update current user profile
+  updateProfile(data) {
+    return axiosClient.put(`${BASE}/profile`, data);
+  },
+
+  // Change password
+  changePassword(data) {
+    return axiosClient.post(`${BASE}/change-password`, data);
   }
 };

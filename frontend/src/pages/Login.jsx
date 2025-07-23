@@ -8,8 +8,8 @@ import Button from '../components/ui/Button';
 import FormWrapper from '../components/ui/FormWrapper';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('john.doe@example.com'); // Pre-fill with test credentials
+  const [password, setPassword] = useState('password123');
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,6 +61,16 @@ export default function Login() {
         <a href="/register" className="text-blue-600 hover:underline">
           Register
         </a>
+      </div>
+
+      {/* Test Credentials Info */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h4 className="text-sm font-medium text-blue-800 mb-2">Test Credentials:</h4>
+        <div className="text-xs text-blue-700 space-y-1">
+          <div><strong>User:</strong> john.doe@example.com / password123</div>
+          <div><strong>Premium:</strong> jane.smith@example.com / password123</div>
+          <div><strong>Admin:</strong> sarah.johnson@example.com / password123</div>
+        </div>
       </div>
     </FormWrapper>
   );

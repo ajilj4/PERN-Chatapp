@@ -1,25 +1,31 @@
 // src/App.jsx
-import { Routes, Route, Navigate } from 'react-router';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-// import ResendOTP from './pages/ResendOTP';
 import VerifyOTP from './pages/VerifyOTP';
+import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
-import { useSocket } from './context/SocketContext';
-import ChatPage from './pages/ChatPage';
+import AppLayout from './components/layout/AppLayout';
+import ChatContainer from './components/chat/ChatContainer';
+import UserManagement from './components/admin/UserManagement';
+import SubscriptionPlans from './components/subscription/SubscriptionPlans';
+import SubscriptionManagement from './components/subscription/SubscriptionManagement';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import { PERMISSIONS } from './utils/authUtils';
 
 
 function App() {
-  const { user } = useSelector(state => state.auth);
-  const { socket, onlineUsers } = useSocket();
+  const { isAuthenticated } = useSelector(state => state.auth);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Routes>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={
           <ProtectedRoute requireAuth={false}>
             <Login />
@@ -40,24 +46,40 @@ function App() {
             <ResetPassword />
           </ProtectedRoute>
         } />
-        {/* <Route path="/resend-otp" element={
-          <ProtectedRoute requireAuth={false}>
-            <ResendOTP />
-          </ProtectedRoute>
-        } /> */}
         <Route path="/verify-otp" element={
           <ProtectedRoute requireAuth={false}>
             <VerifyOTP />
           </ProtectedRoute>
         } />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
+        {/* Protected Routes with Layout */}
         <Route path="/" element={
           <ProtectedRoute>
-            <ChatPage socket={socket} onlineUsers={onlineUsers} />
+            <AppLayout />
           </ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="chat" element={<ChatContainer />} />
+          <Route path="subscription" element={<SubscriptionPlans />} />
+          <Route path="subscription/manage" element={<SubscriptionManagement />} />
+
+          {/* Admin Routes */}
+          <Route path="admin/users" element={
+            <ProtectedRoute requiredPermission={PERMISSIONS.VIEW_USERS}>
+              <UserManagement />
+            </ProtectedRoute>
+          } />
+        </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
         } />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
+        </Routes>
+      </div>
+    </ErrorBoundary>
   );
 }
 

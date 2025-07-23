@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { sendNewMessage } from '../../features/chat/chatThunks';
+import { sendMessage } from '../../features/chat/chatThunks';
 import { useSocket } from '../../context/SocketContext';
+import { addToast } from '../../features/ui/uiSlice';
 
 export default function MessageInput() {
   const dispatch = useDispatch();
   const { currentRoom } = useSelector(state => state.chat);
-  const { user } = useSelector(state => state.auth);
   const { socket } = useSocket();
   const [message, setMessage] = useState('');
   const [attachment, setAttachment] = useState(null);
@@ -17,17 +17,30 @@ export default function MessageInput() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!message.trim() && !attachment) return;
+    if (!currentRoom?.id) return;
 
     try {
-      await dispatch(sendNewMessage(currentRoom.id, message, attachment));
+      await dispatch(sendMessage({
+        roomId: currentRoom.id,
+        content: message,
+        type: 'text',
+        attachment
+      })).unwrap();
+
       setMessage('');
       setAttachment(null);
-      
+
       // Clear typing indicator
-      socket.emit('chat:typing', { roomId: currentRoom.id, isTyping: false });
+      if (socket) {
+        socket.emit('chat:typing', { roomId: currentRoom.id, isTyping: false });
+      }
       setIsTyping(false);
     } catch (error) {
       console.error('Failed to send message:', error);
+      dispatch(addToast({
+        type: 'error',
+        message: 'Failed to send message. Please try again.'
+      }));
     }
   };
 

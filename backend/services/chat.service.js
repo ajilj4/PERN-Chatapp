@@ -65,13 +65,14 @@ class ChatService {
             where: { type: 'private' },
             include: [{
                 model: ChatRoomMember,
+                as: 'members',
                 where: {
                     user_id: { [Op.in]: [userId1, userId2] }
                 },
                 required: true
             }],
             group: ['ChatRoom.id'],
-            having: fn('COUNT', col('ChatRoomMembers.id'), 2)
+            having: fn('COUNT', col('members.id'), 2)
         });
 
         return room;
@@ -79,7 +80,7 @@ class ChatService {
 
    async getUserRooms(userId, { page = 1, limit = 20 }) {
     const offset = (page - 1) * limit;
-    
+
     // Include only the 'members' association once for filtering and loading member details
     const rooms = await ChatRoom.findAndCountAll({
       include: [
@@ -90,15 +91,15 @@ class ChatService {
           required: true,
           include: [{
             model: User,
-            attributes: ['id', 'username', 'name', 'profile', 'is_online', 'last_seen']
+            as: 'user',
+            attributes: ['id', 'username', 'name', 'profile', 'last_seen', 'is_active']
           }]
         },
         {
           model: Message,
           as: 'lastMessage',        // alias defined in associations.js
           include: [{ model: User, as: 'sender', attributes: ['id', 'username', 'name'] }],
-          order: [['createdAt', 'DESC']],
-          limit: 1
+          required: false
         }
       ],
       order: [['last_activity', 'DESC']],
@@ -131,9 +132,11 @@ class ChatService {
                 include: [
                     {
                         model: ChatRoomMember,
+                        as: 'members',
                         include: [{
                             model: User,
-                            attributes: ['id', 'username', 'name', 'profile', 'is_online', 'last_seen']
+                            as: 'user',
+                            attributes: ['id', 'username', 'name', 'profile', 'last_seen', 'is_active']
                         }]
                     }
                 ]
@@ -172,10 +175,12 @@ class ChatService {
                 include: [
                     {
                         model: User,
+                        as: 'sender',
                         attributes: ['id', 'username', 'name', 'profile']
                     },
                     {
                         model: Attachment,
+                        as: 'attachment',
                         required: false
                     },
                     {
@@ -183,12 +188,14 @@ class ChatService {
                         as: 'replyToMessage',
                         include: [{
                             model: User,
+                            as: 'sender',
                             attributes: ['id', 'username', 'name']
                         }],
                         required: false
                     },
                     {
                         model: MessageStatus,
+                        as: 'statuses',
                         required: false
                     }
                 ],
@@ -276,10 +283,12 @@ class ChatService {
                 include: [
                     {
                         model: User,
+                        as: 'sender',
                         attributes: ['id', 'username', 'name', 'profile']
                     },
                     {
                         model: Attachment,
+                        as: 'attachment',
                         required: false
                     },
                     {
@@ -287,6 +296,7 @@ class ChatService {
                         as: 'replyToMessage',
                         include: [{
                             model: User,
+                            as: 'sender',
                             attributes: ['id', 'username', 'name']
                         }],
                         required: false
@@ -438,7 +448,7 @@ class ChatService {
                         }
                     ]
                 },
-                attributes: ['id', 'username', 'name', 'profile', 'is_online', 'last_seen'],
+                attributes: ['id', 'username', 'name', 'profile', 'is_active', 'last_seen'],
                 limit: 20
             });
 
@@ -467,7 +477,8 @@ class ChatService {
                 },
                 include: [{
                     model: User,
-                    attributes: ['id', 'username', 'name', 'profile', 'is_online', 'last_seen']
+                    as: 'user',
+                    attributes: ['id', 'username', 'name', 'profile', 'is_active', 'last_seen']
                 }]
             });
 
@@ -475,7 +486,7 @@ class ChatService {
             const contactsMap = new Map();
 
             for (const member of otherMembers) {
-                const user = member.User;
+                const user = member.user;
                 if (user && !contactsMap.has(user.id)) {
                     contactsMap.set(user.id, user);
                 }

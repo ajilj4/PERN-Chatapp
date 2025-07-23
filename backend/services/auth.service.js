@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const DeviceSession = require('../models/DeviceSession');
 const OTP = require('../models/OTP');
-const PasswordReset = require('../models/PasswordRest');
+const PasswordReset = require('../models/PasswordReset');
 const { uploadToS3Dynamic } = require('./s3Upload.service');
 const emailService = require('../config/email');
 const { generateOTP, generateResetToken, hashToken } = require('../utils/crypto');
@@ -226,7 +226,7 @@ const forgotPassword = async ({ email }) => {
     });
 
     try {
-        await emailService.sendPasswordResetEmail(email, resetToken, user.name);
+        await emailService.sendPasswordResetEmail(email,  user.name, user.name);
     } catch (emailError) {
         console.error('Failed to send reset email:', emailError);
         throw new Error('Failed to send reset email');

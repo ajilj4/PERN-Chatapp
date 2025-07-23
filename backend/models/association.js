@@ -30,7 +30,7 @@ module.exports = function associateModels(db) {
   User.hasMany(PasswordReset, { foreignKey: 'user_id', onDelete: 'CASCADE' });
   PasswordReset.belongsTo(User, { foreignKey: 'user_id' });
 
-  User.hasMany(ChatRoomMember, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+  User.hasMany(ChatRoomMember, { foreignKey: 'user_id', onDelete: 'CASCADE', as: 'memberships' });
   ChatRoomMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
   User.hasMany(Message, { foreignKey: 'sender_id', onDelete: 'CASCADE' });
@@ -76,6 +76,10 @@ module.exports = function associateModels(db) {
 
   Message.hasMany(MessageStatus, { foreignKey: 'message_id', onDelete: 'CASCADE', as: 'statuses' });
   MessageStatus.belongsTo(Message, { foreignKey: 'message_id' });
+
+  // Message reply relationships
+  Message.belongsTo(Message, { foreignKey: 'reply_to', as: 'replyToMessage' });
+  Message.hasMany(Message, { foreignKey: 'reply_to', as: 'replies' });
 
   // 💳 Subscription Relationships
   SubscriptionPlan.hasMany(UserSubscription, { foreignKey: 'plan_id', onDelete: 'CASCADE' });

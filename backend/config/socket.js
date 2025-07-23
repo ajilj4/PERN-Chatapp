@@ -4,8 +4,7 @@ const { verifyAccessToken } = require('./jwt');
 const redisClient = require('./redis');
 const { createAdapter } = require('@socket.io/redis-adapter');
 
-function initSocket(app) {
-    const httpServer = createServer(app);
+function initSocket(httpServer) {
     const io = new Server(httpServer, {
         cors: {
             origin: process.env.FRONTEND_URL || "*",
@@ -75,7 +74,7 @@ function initSocket(app) {
         });
     });
 
-    return { io, httpServer };
+    return io;
 }
 
 // Helper functions
